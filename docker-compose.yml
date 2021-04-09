@@ -1,0 +1,84 @@
+version: '3'
+services:
+
+  #PHP
+  my_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nscreed/php:8.0
+    container_name: my_app
+    restart: unless-stopped
+    tty: true
+    environment:
+      SERVICE_NAME: app
+      SERVICE_TAGS: dev
+    working_dir: /var/www
+    volumes:
+      - ./_source_/:/var/www
+      - ./php.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - app-network
+
+  #Nginx
+  my_webserver:
+    image: nginx:latest
+    container_name: my_webserver
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "8000:80"
+      - "44300:443"
+    volumes:
+      - ./_source_/:/var/www
+      - ./default.conf:/etc/nginx/conf.d/default.conf
+      - ./log/nginx/:/var/log/nginx/
+    networks:
+      - app-network
+
+  #MySQL
+  my_db:
+    image: mysql:5.7.33
+    container_name: my_db
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "33000:3306"
+    environment:
+      MYSQL_DATABASE: mydb
+      MYSQL_ROOT_PASSWORD: root
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - dbdata:/var/lib/mysql
+      - ./my.cnf:/etc/mysql/my.cnf
+    networks:
+      - app-network
+
+
+  #REDIS
+  my_redis:
+    image: redis:latest
+    container_name: my_redis
+    ports:
+      - "63700:6379"
+    networks:
+      - app-network
+
+  my_mailhog:
+    image: mailhog/mailhog
+    container_name: my_mailhog
+    restart: always
+    ports:
+      - 10200:1025
+      - 60200:8025
+
+#Networks
+networks:
+  app-network:
+    driver: bridge
+
+#Volumes
+volumes:
+  dbdata:
+    driver: local
